@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Estoura Balão - Celular</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      transition: background 0.5s ease;
+    }
+
+    /* Temas de Cenário Atualizados */
+    body.theme-sky {
+      background: linear-gradient(180deg, #4A90E2 0%, #87CEEB 60%, #E0F6FF 100%);
+    }
+    body.theme-horizon {
+      background: linear-gradient(180deg, #2C3E50 0%, #FD746C 50%, #FF9068 100%);
+    }
+    body.theme-landscape {
+      background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 50%, #7EC850 50%, #556B2F 100%);
+    }
+    body.theme-night {
+      background: linear-gradient(180deg, #0B1D3A 0%, #1A365D 60%, #2A4365 100%);
+    }
+
+    /* Telas de Início e Game Over */
+    #start-screen, #game-over-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 300;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .card-box {
+      background: rgba(255, 255, 255, 0.96);
+      padding: 22px 18px;
+      border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      text-align: center;
+      width: 88%;
+      max-width: 360px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .card-box h1 {
+      margin: 0 0 10px;
+      color: #FF007F;
+      font-size: 26px;
+    }
+
+    .card-box label {
+      display: block;
+      font-weight: bold;
+      color: #444;
+      font-size: 14px;
+      margin: 12px 0 4px;
+      text-align: left;
+    }
+
+    .name-input, .select-custom {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #FF5733;
+      border-radius: 14px;
+      font-size: 16px;
+      text-align: center;
+      outline: none;
+      background: #FFF;
+      color: #333;
+    }
+
+    .btn-action {
+      background: #FF5733;
+      color: white;
+      border: none;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 18px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(255, 87, 51, 0.4);
+      margin-top: 18px;
+      width: 100%;
+    }
+
+    .btn-action:active {
+      transform: scale(0.96);
+    }
+
+    /* Painel Superior (HUD) */
+    #top-bar {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      z-index: 100;
+      width: 96%;
+    }
+
+    .hud-box {
+      background: rgba(255, 255, 255, 0.92);
+      padding: 6px 10px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #333;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .btn-sound {
+      border: none;
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    #player-display { color: #FF007F; }
+    #lives-display { font-size: 14px; letter-spacing: 1px; }
+
+    /* Notificação Sutil */
+    #subtle-toast {
+      position: absolute;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #FF007F;
+      color: #FF007F;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      z-index: 200;
+      transition: bottom 0.4s ease-in-out;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #subtle-toast.show {
+      bottom: 25px;
+    }
+
+    /* Nuvens do Cenário */
+    .cloud {
+      position: absolute;
+      background: #FFFFFF;
+      border-radius: 50px;
+      opacity: 0.8;
+      animation: moveCloud linear infinite;
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: #FFFFFF;
+      border-radius: 50%;
+    }
+    .cloud::before { width: 40px; height: 40px; top: -15px; left: 10px; }
+    .cloud::after { width: 30px; height: 30px; top: -10px; right: 10px; }
+
+    @keyframes moveCloud {
+      0% { transform: translateX(-120px); }
+      100% { transform: translateX(100vw); }
+    }
+
+    /* Balões de Toque Fácil */
+    .balloon {
+      position: absolute;
+      width: 80px;
+      height: 100px;
+      border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+      animation: floatUp linear forwards;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: #FFFFFF;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+      box-shadow: inset -8px -8px 15px rgba(0,0,0,0.15);
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(105vh); }
+      100% { transform: translateY(-130px); }
+    }
+  </style>
+</head>
+<body class="theme-sky">
+
+  <!-- Tela Inicial -->
+  <div id="start-screen">
+    <div class="card-box">
+      <h1>🎈 Estoura Balão</h1>
+      
+      <label for="player-name-input">Nome da criança:</label>
+      <input type="text" id="player-name-input" class="name-input" placeholder="Digite o nome..." maxlength="15">
+
+      <label for="theme-select">Escolha o Cenário:</label>
+      <select id="theme-select" class="select-custom" onchange="previewTheme()">
+        <option value="sky">🌤️ Céu Azul</option>
+        <option value="horizon">🌅 Horizonte (Pôr do Sol)</option>
+        <option value="landscape">🏞️ Paisagem (Montanhas)</option>
+        <option value="night">🌙 Noite Estrelada</option>
+      </select>
+
+      <label for="balloon-style-select">Estilo dos Balões:</label>
+      <select id="balloon-style-select" class="select-custom">
+        <option value="alphabet">🔤 Alfabeto (A-Z)</option>
+        <option value="colors">🌈 Coloridos Tradicionais</option>
+        <option value="heroes">🛡️ Tema Super-Heróis</option>
+        <option value="animals">🐱 Bichinhos Fofos</option>
+        <option value="fruits">🍎 Frutinhas</option>
+      </select>
+
+      <button class="btn-action" onclick="startGame()">JOGAR ▶</button>
+    </div>
+  </div>
+
+  <!-- Tela de Game Over -->
+  <div id="game-over-screen" style="display: none;">
+    <div class="card-box">
+      <h1 style="color: #D32F2F;">FIM DE JOGO! 🎈</h1>
+      <p>Ops! 3 balões fugiram!</p>
+      <p style="font-size: 18px; font-weight: bold; margin: 10px 0;">
+        Pontuação: <span id="final-score" style="color: #FF007F;">0</span> balões
+      </p>
+      <button class="btn-action" onclick="restartGame()">JOGAR DE NOVO 🔄</button>
+    </div>
+  </div>
+
+  <!-- Painel do Topo -->
+  <div id="top-bar" style="display: none;">
+    <div class="hud-box">👶 <span id="player-display">Jogador</span></div>
+    <div class="hud-box">❤️ <span id="lives-display">❤️❤️❤️</span></div>
+    <div class="hud-box">⭐ Nível <span id="level-display">1</span></div>
+    <div class="hud-box">🎈 <span id="score">0</span> / <span id="target-display">20</span></div>
+    <div class="hud-box">🏆 <span id="high-score">0</span></div>
+    <button class="hud-box btn-sound" id="music-btn" onclick="toggleMusic()">🔊</button>
+  </div>
+
+  <!-- Notificação Sutil -->
+  <div id="subtle-toast">🎉 Meta de 20 balões atingida! Nível 2</div>
+
+  <!-- Nuvens no cenário -->
+  <div class="cloud-container">
+    <div class="cloud" style="width: 100px; height: 35px; top: 12%; animation-duration: 18s;"></div>
+    <div class="cloud" style="width: 120px; height: 40px; top: 35%; animation-duration: 25s; animation-delay: -6s;"></div>
+    <div class="cloud" style="width: 80px; height: 30px; top: 58%; animation-duration: 15s; animation-delay: -3s;"></div>
+  </div>
+
+  <div id="game"></div>
+
+  <script>
+    const colors = ['#FF5733', '#33FF57', '#3357FF', '#F39C12', '#9B59B6', '#FF33A8'];
+    
+    const balloonThemes = {
+      alphabet: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+      colors: [''],
+      heroes: ['🛡️', '⭐', '⚡', '🦇', '🕸️'],
+      animals: ['🐱', '🐶', '🐰', '🐼', '🦊'],
+      fruits: ['🍎', '🍌', '🍓', '🍇', '🍉']
+    };
+
+    const game = document.getElementById('game');
+    
+    // Telas e Controles
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const topBar = document.getElementById('top-bar');
+    const nameInput = document.getElementById('player-name-input');
+    const themeSelect = document.getElementById('theme-select');
+    const balloonStyleSelect = document.getElementById('balloon-style-select');
+    
+    // Elementos HUD
+    const playerDisplay = document.getElementById('player-display');
+    const livesDisplay = document.getElementById('lives-display');
+    const scoreDisplay = document.getElementById('score');
+    const levelDisplay = document.getElementById('level-display');
+    const targetDisplay = document.getElementById('target-display');
+    const highScoreDisplay = document.getElementById('high-score');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const toast = document.getElementById('subtle-toast');
+    const musicBtn = document.getElementById('music-btn');
+
+    // Variáveis do Jogo
+    let playerName = "Pequeno";
+    let selectedBalloonTheme = 'alphabet';
+    let poppedCount = 0;
+    let currentLevel = 1;
+    let targetScore = 20;
+    let currentSpeed = 8;
+    let lives = 3;
+    let highScore = 0;
+    let gameActive = false;
+
+    // Áudio
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let musicMuted = false;
+    let musicInterval = null;
+    const melody = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 293.66, 349.23, 440.00, 349.23, 293.66, 261.63];
+    let noteIndex = 0;
+
+    function previewTheme() {
+      document.body.className = 'theme-' + themeSelect.value;
+    }
+
+    previewTheme();
+
+    function playBackgroundMusic() {
+      if (musicInterval) clearInterval(musicInterval);
+      musicInterval = setInterval(() => {
+        if (!gameActive || musicMuted) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(melody[noteIndex], audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+
+        noteIndex = (noteIndex + 1) % melody.length;
+      }, 400);
+    }
+
+    function toggleMusic() {
+      musicMuted = !musicMuted;
+      musicBtn.textContent = musicMuted ? '🔈' : '🔊';
+    }
+
+    function playPop() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+      
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function updateLivesDisplay() {
+      let hearts = '';
+      for (let i = 0; i < 3; i++) {
+        hearts += (i < lives) ? '❤️' : '🖤';
+      }
+      livesDisplay.textContent = hearts;
+    }
+
+    function startGame() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const inputVal = nameInput.value.trim();
+      if (inputVal !== "") playerName = inputVal;
+      playerDisplay.textContent = playerName;
+
+      selectedBalloonTheme = balloonStyleSelect.value;
+
+      highScore = localStorage.getItem('balloon_highscore_' + playerName) || 0;
+      highScoreDisplay.textContent = highScore;
+
+      startScreen.style.display = 'none';
+      gameOverScreen.style.display = 'none';
+      topBar.style.display = 'flex';
+
+      resetGameVariables();
+      gameActive = true;
+      playBackgroundMusic();
+
+      for (let i = 0; i < 4; i++) {
+        setTimeout(createBalloon, i * 1200);
+      }
+    }
+
+    function resetGameVariables() {
+      poppedCount = 0;
+      currentLevel = 1;
+      targetScore = 20;
+      currentSpeed = 8;
+      lives = 3;
+      
+      scoreDisplay.textContent = poppedCount;
+      levelDisplay.textContent = currentLevel;
+      targetDisplay.textContent = targetScore;
+      updateLivesDisplay();
+    }
+
+    function triggerGameOver() {
+      gameActive = false;
+      game.innerHTML = ''; 
+      topBar.style.display = 'none';
+      finalScoreDisplay.textContent = poppedCount;
+      gameOverScreen.style.display = 'flex';
+    }
+
+    function restartGame() {
+      gameOverScreen.style.display = 'none';
+      topBar.style.display = 'flex';
+      resetGameVariables();
+      gameActive = true;
+
+      for (let i = 0; i < 4; i++) {
+        setTimeout(createBalloon, i * 1200);
+      }
+    }
+
+    function handleBalloonEscape(balloonElement, checkInterval) {
+      clearInterval(checkInterval);
+      if (!gameActive) return;
+
+      if (balloonElement && balloonElement.parentNode) {
+        balloonElement.remove();
+        lives--;
+        updateLivesDisplay();
+
+        if (lives <= 0) {
+          triggerGameOver();
+        } else {
+          createBalloon();
+        }
+      }
+    }
+
+    function createBalloon() {
+      if (!gameActive) return;
+
+      const b = document.createElement('div');
+      b.className = 'balloon';
+      
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      b.style.backgroundColor = color;
+
+      const items = balloonThemes[selectedBalloonTheme];
+      if (items && items[0] !== '') {
+        b.textContent = items[Math.floor(Math.random() * items.length)];
+      }
+
+      const maxX = window.innerWidth - 90;
+      b.style.left = Math.max(10, Math.random() * maxX) + 'px';
+      b.style.animationDuration = currentSpeed + 's';
+
+      let popped = false;
+
+      const checkInterval = setInterval(() => {
+        if (!gameActive || popped) {
+          clearInterval(checkInterval);
+          return;
+        }
+        
+        const rect = b.getBoundingClientRect();
+        if (rect.bottom < 0) {
+          handleBalloonEscape(b, checkInterval);
+        }
+      }, 100);
+
+      const pop = function(e) {
+        if (e) e.preventDefault();
+        if (!gameActive || popped) return;
+
+        popped = true;
+        clearInterval(checkInterval);
+
+        playPop();
+        poppedCount++;
+        scoreDisplay.textContent = poppedCount;
+
+        if (poppedCount > highScore) {
+          highScore = poppedCount;
+          highScoreDisplay.textContent = highScore;
+          localStorage.setItem('balloon_highscore_' + playerName, highScore);
+        }
+
+        if (poppedCount >= targetScore) {
+          currentLevel++;
+          targetScore += 20;
+          if (currentSpeed > 2.5) currentSpeed -= 0.6;
+
+          levelDisplay.textContent = currentLevel;
+          targetDisplay.textContent = targetScore;
+          showToast(`✨ Meta atingida! Nível ${currentLevel}`);
+        }
+
+        b.remove();
+        createBalloon();
+      };
+
+      b.addEventListener('touchstart', pop, { passive: false });
+      b.addEventListener('mousedown', pop);
+
+      b.addEventListener('animationend', function() {
+        if (!popped) {
+          handleBalloonEscape(b, checkInterval);
+        }
+      });
+
+      game.appendChild(b);
+    }
+  </script>
+</body>
+</html>
